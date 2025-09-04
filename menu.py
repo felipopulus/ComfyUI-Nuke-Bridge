@@ -22,6 +22,16 @@ except Exception as e:  # pragma: no cover
     nuke.tprint("[ComfyUiLite] Failed to import launch_server: {}".format(e))
     raise
 
+# Optional: Import the ComfyUI workflow importer (self-contained in this package)
+try:
+    from comfy_to_nuke import import_comfyui_workflow  # type: ignore
+except Exception as e:  # pragma: no cover
+    import_comfyui_workflow = None  # type: ignore
+    try:
+        nuke.tprint("[ComfyUiLite] Failed to import comfy_to_nuke: {}".format(e))
+    except Exception:
+        pass
+
 
 # Build main menu in Nuke's top bar
 _comfy_menu = nuke.menu('Nuke').addMenu('ComfyUi')
@@ -32,6 +42,9 @@ _MENU_ITEM_LABEL = "Start ComfyUI Server (Status: ⚪idle)"
 _MENU_ITEM_OBJ = None  # type: ignore
 _MENU_ITEM_NAME = None  # type: ignore
 _MENU_PLACEHOLDER = "__ComfyUi_Toggle__"
+
+# Static item names
+_IMPORT_MENU_LABEL = "Import ComfyUI Workflow..."
 
 def _get_menu():
     """Get or create the top-level ComfyUi menu safely.
@@ -50,6 +63,19 @@ def _get_menu():
         except Exception:
             pass
         return None
+
+def _cmd_import_workflow():
+    """Wrapper for the importer to keep menu callbacks robust."""
+    try:
+        if import_comfyui_workflow:
+            import_comfyui_workflow()  # type: ignore[misc]
+        else:
+            nuke.message("Importer not available. Check installation.")  # type: ignore
+    except Exception as e:  # pragma: no cover
+        try:
+            nuke.tprint(f"[ComfyUi] Import failed: {e}")
+        except Exception:
+            pass
 
 def _cleanup_legacy_menu_items():
     """Remove any previously created menu entries to avoid duplicates.
@@ -76,6 +102,21 @@ def _cleanup_legacy_menu_items():
         except Exception:
             pass
 
+def _ensure_static_items():
+    """Ensure persistent static menu entries exist (non-toggle items)."""
+    menu = _get_menu()
+    if not menu:
+        return
+    try:
+        existing = menu.findItem(_IMPORT_MENU_LABEL)  # type: ignore[attr-defined]
+    except Exception:
+        existing = None
+    if not existing:
+        try:
+            # Put after the toggle item; index=1 should be fine.
+            menu.addCommand(_IMPORT_MENU_LABEL, _cmd_import_workflow, index=1)
+        except Exception:
+            pass
 
 def _status_emoji(status: str) -> str:
     m = {
@@ -189,6 +230,7 @@ def _toggle_server():
 
 # One-time cleanup of legacy menu entries, then create the single persistent item
 _cleanup_legacy_menu_items()
+_ensure_static_items()
 _update_menu_item(_CURRENT_STATUS)
 
 # Hook status callback and initialize label
