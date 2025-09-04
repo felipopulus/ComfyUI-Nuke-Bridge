@@ -25,6 +25,15 @@ if not exist "%PLUGIN_DIR%\menu.py" (
   exit /b 1
 )
 
+rem --- Activate virtual environment -----------------------------------------
+set "VENV_DIR=%PLUGIN_DIR%\.venv"
+if exist "%VENV_DIR%\Scripts\activate.bat" (
+  call "%VENV_DIR%\Scripts\activate.bat"
+  echo [INFO] Activated venv at %VENV_DIR%
+) else (
+  echo [WARN] Virtual environment not found at %VENV_DIR%. Continuing without venv.
+)
+
 rem --- Add plugin to NUKE_PATH without losing existing value -----------------
 if defined NUKE_PATH (
   set "NUKE_PATH=%PLUGIN_DIR%;%NUKE_PATH%"
